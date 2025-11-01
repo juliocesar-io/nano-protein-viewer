@@ -31,11 +31,13 @@ export function ControlsPanel(props: ControlsPanelProps) {
 
   return (
     <div style={{
-      background: 'white',
-      border: '1px solid hsl(220, 13%, 91%)',
-      borderRadius: 8,
+      background: 'rgba(255,255,255,0.6)',
+      border: '1px solid rgba(255,255,255,0.3)',
+      borderRadius: 12,
       padding: 12,
-      boxShadow: '0 4px 6px -1px hsl(220, 13%, 91%), 0 2px 4px -1px hsl(220, 13%, 91%)',
+      boxShadow: '0 8px 32px rgba(31,38,135,0.2)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
       width: '100%',
       boxSizing: 'border-box'
     }}>
