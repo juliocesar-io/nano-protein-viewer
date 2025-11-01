@@ -59,7 +59,7 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
     if (!res.ok) throw new Error(`Failed to fetch ${entry.url}`);
     const text = await res.text();
     const format = detectFormat(entry.name || entry.url, entry.format);
-    return { name: entry.name, data: text, format } as LoadedStructure;
+    return { name: entry.name, data: text, format, style: entry.style } as LoadedStructure;
   }, []);
 
   useEffect(() => {
@@ -88,7 +88,34 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
             }
             // init settings for first file if missing
             const key = results[0].name;
-            setSettingsByFile(prev => prev[key] ? prev : ({ ...prev, [key]: getDefaultSettings() }));
+            if (results[0].style) {
+              const s = results[0].style;
+              if (s.colorMode) setColorMode(s.colorMode);
+              if (s.customColor !== undefined) setCustomColor(s.customColor);
+              if (s.illustrative !== undefined) setIllustrative(s.illustrative);
+              if (s.surface !== undefined) setSurface({
+                enabled: !!s.surface.enabled,
+                opacity: s.surface.opacity ?? 40,
+                inherit: s.surface.inherit ?? true,
+                customColor: s.surface.customColor ?? '#4ECDC4'
+              });
+              setSettingsByFile(prev => ({ ...prev, [key]: {
+                colorMode: s.colorMode ?? colorMode,
+                customColor: s.customColor ?? customColor,
+                secondaryColors,
+                rainbowPalette,
+                chainColors,
+                illustrative: s.illustrative ?? illustrative,
+                surface: {
+                  enabled: !!(s.surface && s.surface.enabled),
+                  opacity: s.surface?.opacity ?? surface.opacity,
+                  inherit: s.surface?.inherit ?? surface.inherit,
+                  customColor: s.surface?.customColor ?? surface.customColor
+                }
+              }}));
+            } else {
+              setSettingsByFile(prev => prev[key] ? prev : ({ ...prev, [key]: getDefaultSettings() }));
+            }
           }
         } catch (e) {
           // eslint-disable-next-line no-console
@@ -119,42 +146,54 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
     const chains = await mol.listChains();
     setDetectedChains(chains);
 
-    // Restore saved settings for the new file if present
+    // Compute next settings deterministically for this file
     const key = getKey(idx);
     const saved = settingsByFile[key];
-    if (saved) {
-      setColorMode(saved.colorMode);
-      setCustomColor(saved.customColor);
-      setSecondaryColors(saved.secondaryColors);
-      setRainbowPalette(saved.rainbowPalette);
-      setChainColors(saved.chainColors);
-      setIllustrative(saved.illustrative);
-      setSurface(saved.surface);
-    } else {
-      // Initialize defaults for this file
-      setSettingsByFile(prev => ({ ...prev, [key]: getDefaultSettings() }));
-    }
-    // Apply immediately after load to avoid race with effects
-    try {
-      if (colorMode === 'none') {
-        // do not apply any theme by default
-      } else if (colorMode === 'custom') {
-        if (customColor) {
-          await mol.updateColorTheme('custom', { hex: customColor });
-        }
-      } else if (colorMode === 'secondary') {
-        await mol.updateColorTheme('secondary', { secondaryColors });
-      } else if (colorMode === 'element') {
-        await mol.updateColorTheme('element');
-      } else if (colorMode === 'residue') {
-        await mol.updateColorTheme('residue');
-      } else if (colorMode === 'chain') {
-        await mol.updateColorTheme('chain', { chainColors });
-      } else if (colorMode === 'rainbow') {
-        await mol.updateColorTheme('rainbow', { palette: rainbowPalette });
+    const incoming = loaded[idx]?.style;
+    const next = saved ?? {
+      colorMode: incoming?.colorMode ?? colorMode,
+      customColor: incoming?.customColor ?? customColor,
+      secondaryColors,
+      rainbowPalette,
+      chainColors,
+      illustrative: incoming?.illustrative ?? illustrative,
+      surface: {
+        enabled: !!(incoming?.surface && incoming.surface.enabled),
+        opacity: incoming?.surface?.opacity ?? surface.opacity,
+        inherit: incoming?.surface?.inherit ?? surface.inherit,
+        customColor: incoming?.surface?.customColor ?? surface.customColor
       }
-      await mol.applyIllustrativeStyle(illustrative);
-      await mol.applySurface(surface.enabled, { opacity: surface.opacity, inherit: surface.inherit, customColor: surface.customColor });
+    } as ViewerSettings;
+
+    // Set state from next and persist per file
+    setColorMode(next.colorMode);
+    setCustomColor(next.customColor);
+    setSecondaryColors(next.secondaryColors);
+    setRainbowPalette(next.rainbowPalette);
+    setChainColors(next.chainColors);
+    setIllustrative(next.illustrative);
+    setSurface(next.surface);
+    setSettingsByFile(prev => ({ ...prev, [key]: next }));
+
+    // Apply immediately using next values to avoid leakage
+    try {
+      if (next.colorMode === 'none') {
+        // no theme override
+      } else if (next.colorMode === 'custom') {
+        if (next.customColor) await mol.updateColorTheme('custom', { hex: next.customColor });
+      } else if (next.colorMode === 'secondary') {
+        await mol.updateColorTheme('secondary', { secondaryColors: next.secondaryColors });
+      } else if (next.colorMode === 'element') {
+        await mol.updateColorTheme('element');
+      } else if (next.colorMode === 'residue') {
+        await mol.updateColorTheme('residue');
+      } else if (next.colorMode === 'chain') {
+        await mol.updateColorTheme('chain', { chainColors: next.chainColors });
+      } else if (next.colorMode === 'rainbow') {
+        await mol.updateColorTheme('rainbow', { palette: next.rainbowPalette });
+      }
+      await mol.applyIllustrativeStyle(next.illustrative);
+      await mol.applySurface(next.surface.enabled, { opacity: next.surface.opacity, inherit: next.surface.inherit, customColor: next.surface.customColor });
     } finally {
       setIsApplying(false);
     }
