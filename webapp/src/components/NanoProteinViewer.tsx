@@ -27,6 +27,8 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
   const [illustrative, setIllustrative] = useState(false);
   const [surface, setSurface] = useState<{ enabled: boolean; opacity: number; inherit: boolean; customColor: string }>({ enabled: false, opacity: 40, inherit: true, customColor: '#4ECDC4' });
   const [layoutMode, setLayoutMode] = useState<'single'|'grid'>('single');
+  const [showControls, setShowControls] = useState(true);
+  const [showFiles, setShowFiles] = useState(true);
 
   type ViewerSettings = {
     colorMode: typeof colorMode;
@@ -246,37 +248,71 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
       )}
 
       {layoutMode === 'single' && (
-        <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, width: 360 }}>
-          <ControlsPanel
-            colorMode={colorMode}
-            setColorMode={setColorMode}
-            customColor={customColor}
-            setCustomColor={setCustomColor}
-            secondaryColors={secondaryColors}
-            setSecondaryColors={setSecondaryColors}
-            // Rainbow
-            rainbowPalette={rainbowPalette}
-            setRainbowPalette={setRainbowPalette}
-            // Chain
-            detectedChains={detectedChains}
-            chainColors={chainColors}
-            setChainColor={(id, hex) => setChainColors(prev => ({ ...prev, [id]: hex }))}
-            // Style
-            illustrative={illustrative}
-            onToggleIllustrative={setIllustrative}
-            surface={surface}
-            setSurface={setSurface}
-          />
-        </div>
+        showControls ? (
+          <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, width: 360 }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowControls(false)}
+                aria-label="Hide controls"
+                title="Hide"
+                style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '2px 8px', cursor: 'pointer', zIndex: 1 }}
+              >×</button>
+              <ControlsPanel
+                colorMode={colorMode}
+                setColorMode={setColorMode}
+                customColor={customColor}
+                setCustomColor={setCustomColor}
+                secondaryColors={secondaryColors}
+                setSecondaryColors={setSecondaryColors}
+                // Rainbow
+                rainbowPalette={rainbowPalette}
+                setRainbowPalette={setRainbowPalette}
+                // Chain
+                detectedChains={detectedChains}
+                chainColors={chainColors}
+                setChainColor={(id, hex) => setChainColors(prev => ({ ...prev, [id]: hex }))}
+                // Style
+                illustrative={illustrative}
+                onToggleIllustrative={setIllustrative}
+                surface={surface}
+                setSurface={setSurface}
+              />
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowControls(true)}
+            aria-label="Show controls"
+            title="Show controls"
+            style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
+          >Controls</button>
+        )
       )}
 
-      <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: 280 }}>
-        <FileListPanel
-          files={loaded.map((f) => ({ name: f.name, format: f.format }))}
-          currentIndex={currentIndex}
-          onSelect={onSelectIndex}
-        />
-      </div>
+      {showFiles ? (
+        <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: 280 }}>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowFiles(false)}
+              aria-label="Hide files"
+              title="Hide"
+              style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '2px 8px', cursor: 'pointer', zIndex: 1 }}
+            >×</button>
+            <FileListPanel
+              files={loaded.map((f) => ({ name: f.name, format: f.format }))}
+              currentIndex={currentIndex}
+              onSelect={onSelectIndex}
+            />
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowFiles(true)}
+          aria-label="Show files"
+          title="Show files"
+          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
+        >Files</button>
+      )}
 
       <LayoutPanel mode={layoutMode} setMode={setLayoutMode} />
     </div>
