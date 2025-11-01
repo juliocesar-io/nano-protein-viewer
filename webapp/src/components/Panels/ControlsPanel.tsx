@@ -20,6 +20,7 @@ interface ControlsPanelProps {
   setSurface?: (s: { enabled: boolean; opacity: number; inherit: boolean; customColor: string }) => void;
   onResetView?: () => void;
   // layout controls removed; handled by separate LayoutPanel
+  onAddLocalStructures?: (items: Array<{ name: string; data: string; format: 'pdb'|'mmcif' }>) => void;
 }
 
 export function ControlsPanel(props: ControlsPanelProps) {
@@ -28,6 +29,27 @@ export function ControlsPanel(props: ControlsPanelProps) {
     '#4ECDC4','#FF6B6B','#4DABF7','#69DB7C','#FFD93D',
     '#FF922B','#DA77F2','#FF8CC8','#15AABF','#868E96'
   ], []);
+  const fileInputId = 'controls-file-input';
+
+  const detectFormat = (name: string, content: string): 'pdb'|'mmcif'|null => {
+    const lower = name.toLowerCase();
+    if (lower.endsWith('.cif') || lower.endsWith('.mmcif')) return 'mmcif';
+    if (lower.endsWith('.pdb') || lower.endsWith('.pdbqt')) return 'pdb';
+    if (content.includes('data_') || content.includes('_atom_site')) return 'mmcif';
+    if (content.includes('ATOM') || content.includes('HETATM')) return 'pdb';
+    return null;
+  };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || !props.onAddLocalStructures) return;
+    const items: Array<{ name: string; data: string; format: 'pdb'|'mmcif' }> = [];
+    for (const f of Array.from(files)) {
+      const text = await f.text();
+      const fmt = detectFormat(f.name, text);
+      if (fmt) items.push({ name: f.name, data: text, format: fmt });
+    }
+    if (items.length) props.onAddLocalStructures(items);
+  };
 
   return (
     <div style={{
@@ -44,6 +66,17 @@ export function ControlsPanel(props: ControlsPanelProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: 16, color: 'hsl(220, 9%, 46%)' }}>Controls</h3>
       </div>
+
+      {props.onAddLocalStructures && (
+        <div style={{ marginTop: 8 }}>
+          <input id={fileInputId} type="file" accept=".pdb,.PDB,.cif,.CIF,.mmcif,.MMCIF" multiple style={{ display: 'none' }} onChange={(e) => handleFiles(e.target.files)} />
+          <button onClick={() => document.getElementById(fileInputId)?.click()} style={{
+            padding: '10px 14px', width: '100%', borderRadius: 10, border: 'none',
+            background: 'linear-gradient(180deg, #5B9CFF, #357AE8)', color: '#fff', fontWeight: 600,
+            letterSpacing: 0.2, boxShadow: '0 6px 16px rgba(53, 122, 232, 0.35)', cursor: 'pointer'
+          }}>Load PDB/mmCIF files</button>
+        </div>
+      )}
 
       {props.onResetView && (
         <div style={{ marginTop: 8 }}>

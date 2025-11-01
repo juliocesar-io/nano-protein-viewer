@@ -275,7 +275,10 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
                 illustrative={illustrative}
                 onToggleIllustrative={setIllustrative}
                 surface={surface}
-                setSurface={setSurface}
+              setSurface={setSurface}
+              onAddLocalStructures={(items) => {
+                setLoaded(prev => [...prev, ...items.map(i => ({ name: i.name, data: i.data, format: i.format }))]);
+              }}
               />
             </div>
           </div>
@@ -284,7 +287,9 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
             onClick={() => setShowControls(true)}
             aria-label="Show controls"
             title="Show controls"
-            style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
+            style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10,
+              background: 'linear-gradient(180deg, #ffffffcc, #ffffffa0)', color: '#2b2b2b', border: '1px solid rgba(255,255,255,0.6)',
+              borderRadius: 999, padding: '8px 14px', fontWeight: 600, letterSpacing: 0.2, boxShadow: '0 6px 16px rgba(0,0,0,0.15)', cursor: 'pointer' }}
           >Controls</button>
         )
       )}
@@ -310,7 +315,9 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
           onClick={() => setShowFiles(true)}
           aria-label="Show files"
           title="Show files"
-          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}
+          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10,
+            background: 'linear-gradient(180deg, #ffffffcc, #ffffffa0)', color: '#2b2b2b', border: '1px solid rgba(255,255,255,0.6)',
+            borderRadius: 999, padding: '8px 14px', fontWeight: 600, letterSpacing: 0.2, boxShadow: '0 6px 16px rgba(0,0,0,0.15)', cursor: 'pointer' }}
         >Files</button>
       )}
 
