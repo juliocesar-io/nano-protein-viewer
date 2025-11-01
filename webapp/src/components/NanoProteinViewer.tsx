@@ -249,7 +249,7 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
 
       {layoutMode === 'single' && (
         showControls ? (
-          <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, width: 360 }}>
+          <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, width: 260 }}>
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowControls(false)}

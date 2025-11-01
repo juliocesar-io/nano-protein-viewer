@@ -30,6 +30,7 @@ export function ControlsPanel(props: ControlsPanelProps) {
     '#FF922B','#DA77F2','#FF8CC8','#15AABF','#868E96'
   ], []);
   const fileInputId = 'controls-file-input';
+  const colorInputId = 'controls-custom-color-input';
 
   const detectFormat = (name: string, content: string): 'pdb'|'mmcif'|null => {
     const lower = name.toLowerCase();
@@ -112,11 +113,42 @@ export function ControlsPanel(props: ControlsPanelProps) {
 
         {props.colorMode === 'custom' && (
           <div style={{ marginTop: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
               {palette.map(hex => (
-                <div key={hex} title={hex} onClick={() => props.setCustomColor(hex)}
-                  style={{ width: 28, height: 28, borderRadius: 4, background: hex, border: props.customColor===hex? '3px solid #111':'2px solid transparent', cursor: 'pointer' }} />
+                <div
+                  key={hex}
+                  title={hex}
+                  onClick={() => props.setCustomColor(hex)}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: hex,
+                    border: '1px solid rgba(0,0,0,0.15)',
+                    boxShadow: props.customColor===hex ? '0 0 0 2px #111' : 'none',
+                    cursor: 'pointer'
+                  }}
+                />
               ))}
+              {/* native color input as the final circle */}
+              <input
+                id={colorInputId}
+                type="color"
+                title="Pick custom color"
+                value={/^#([0-9A-F]{3}){1,2}$/i.test(props.customColor) ? props.customColor : '#ffffff'}
+                onChange={(e) => props.setCustomColor(e.target.value)}
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  width: 22,
+                  height: 22,
+                  padding: 0,
+                  borderRadius: '50%',
+                  border: '1px dashed rgba(0,0,0,0.25)',
+                  background: 'transparent',
+                  cursor: 'pointer'
+                }}
+              />
             </div>
           </div>
         )}
