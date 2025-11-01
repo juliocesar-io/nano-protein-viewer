@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 
-type ColorMode = 'custom'|'element'|'residue'|'secondary'|'chain'|'rainbow';
+type ColorMode = 'none'|'custom'|'element'|'residue'|'secondary'|'chain'|'rainbow';
 
 interface ControlsPanelProps {
   colorMode: ColorMode;
@@ -61,14 +61,14 @@ export function ControlsPanel(props: ControlsPanelProps) {
             background: '#fff', border: '1px solid hsl(214.3 31.8% 91.4%)', borderRadius: 6, padding: '6px 12px',
             fontSize: 12, color: 'hsl(220, 9%, 46%)', cursor: 'pointer'
           }}>
-            {props.colorMode === 'rainbow' ? 'Rainbow' : props.colorMode.charAt(0).toUpperCase()+props.colorMode.slice(1)} ▼
+            {props.colorMode === 'none' ? 'Select' : (props.colorMode === 'rainbow' ? 'Rainbow' : props.colorMode.charAt(0).toUpperCase()+props.colorMode.slice(1))} ▼
           </button>
           {open && (
             <div style={{ position: 'absolute', background: '#fff', border: '1px solid hsl(214.3 31.8% 91.4%)', borderRadius: 6, marginTop: 4, zIndex: 20, width: 200 }}>
-              {(['custom','element','residue','secondary','chain','rainbow'] as ColorMode[]).map(m => (
+              {(['none','custom','element','residue','secondary','chain','rainbow'] as ColorMode[]).map(m => (
                 <div key={m} onClick={() => { props.setColorMode(m); setOpen(false); }}
                   style={{ padding: '8px 12px', fontSize: 12, cursor: 'pointer', color: 'hsl(220, 9%, 46%)', background: props.colorMode===m?'hsl(220, 9%, 96%)':'#fff' }}>
-                  {m.charAt(0).toUpperCase()+m.slice(1)}
+                  {m === 'none' ? 'None' : m.charAt(0).toUpperCase()+m.slice(1)}
                 </div>
               ))}
             </div>

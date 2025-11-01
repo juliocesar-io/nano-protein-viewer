@@ -17,8 +17,8 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
 
   // Color controls
-  const [colorMode, setColorMode] = useState<'custom'|'element'|'residue'|'secondary'|'chain'|'rainbow'>('custom');
-  const [customColor, setCustomColor] = useState('#4ECDC4');
+  const [colorMode, setColorMode] = useState<'none'|'custom'|'element'|'residue'|'secondary'|'chain'|'rainbow'>('custom');
+  const [customColor, setCustomColor] = useState('');
   const [secondaryColors, setSecondaryColors] = useState<{ helix: string; sheet: string; coil: string }>({ helix: '#0FA3FF', sheet: '#24B235', coil: '#E8E8E8' });
   const [rainbowPalette, setRainbowPalette] = useState<'rainbow'|'viridis'|'plasma'|'magma'|'blue-red'|'pastel'>('rainbow');
   const [detectedChains, setDetectedChains] = useState<string[]>([]);
@@ -37,6 +37,7 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
     surface: { enabled: boolean; opacity: number; inherit: boolean; customColor: string };
   };
   const [settingsByFile, setSettingsByFile] = useState<Record<string, ViewerSettings>>({});
+  const [isApplying, setIsApplying] = useState(false);
   const getDefaultSettings = (): ViewerSettings => ({
     colorMode, customColor, secondaryColors, rainbowPalette, chainColors, illustrative, surface
   });
@@ -107,6 +108,7 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
       }));
     }
 
+    setIsApplying(true);
     setCurrentIndex(idx);
     await mol.loadStructureText(loaded[idx].data, loaded[idx].format, false);
 
@@ -128,6 +130,30 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
     } else {
       // Initialize defaults for this file
       setSettingsByFile(prev => ({ ...prev, [key]: getDefaultSettings() }));
+    }
+    // Apply immediately after load to avoid race with effects
+    try {
+      if (colorMode === 'none') {
+        // do not apply any theme by default
+      } else if (colorMode === 'custom') {
+        if (customColor) {
+          await mol.updateColorTheme('custom', { hex: customColor });
+        }
+      } else if (colorMode === 'secondary') {
+        await mol.updateColorTheme('secondary', { secondaryColors });
+      } else if (colorMode === 'element') {
+        await mol.updateColorTheme('element');
+      } else if (colorMode === 'residue') {
+        await mol.updateColorTheme('residue');
+      } else if (colorMode === 'chain') {
+        await mol.updateColorTheme('chain', { chainColors });
+      } else if (colorMode === 'rainbow') {
+        await mol.updateColorTheme('rainbow', { palette: rainbowPalette });
+      }
+      await mol.applyIllustrativeStyle(illustrative);
+      await mol.applySurface(surface.enabled, { opacity: surface.opacity, inherit: surface.inherit, customColor: surface.customColor });
+    } finally {
+      setIsApplying(false);
     }
   }, [chainColors, colorMode, currentIndex, customColor, getDefaultSettings, getKey, illustrative, loaded, mol, rainbowPalette, secondaryColors, settingsByFile, surface]);
 
@@ -154,8 +180,16 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
   // Apply color theme when controls change
   useEffect(() => {
     (async () => {
-      if (!loaded.length) return;
+      if (!loaded.length || isApplying) return;
+      if (colorMode === 'none') {
+        const current = loaded[currentIndex] ?? loaded[0];
+        if (current) {
+          await mol.loadStructureText(current.data, current.format, false);
+        }
+        return;
+      }
       if (colorMode === 'custom') {
+        if (!customColor) return;
         await mol.updateColorTheme('custom', { hex: customColor });
       } else if (colorMode === 'secondary') {
         await mol.updateColorTheme('secondary', { secondaryColors });
@@ -169,11 +203,11 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
         await mol.updateColorTheme('rainbow', { palette: rainbowPalette });
       }
     })();
-  }, [colorMode, customColor, secondaryColors, rainbowPalette, chainColors, currentIndex, loaded.length, mol]);
+  }, [colorMode, customColor, secondaryColors, rainbowPalette, chainColors, currentIndex, loaded.length, mol, isApplying]);
 
   // Apply illustrative/surface when toggled
-  useEffect(() => { (async () => { await mol.applyIllustrativeStyle(illustrative); })(); }, [illustrative, currentIndex, mol]);
-  useEffect(() => { (async () => { await mol.applySurface(surface.enabled, { opacity: surface.opacity, inherit: surface.inherit, customColor: surface.customColor }); })(); }, [surface.enabled, surface.opacity, surface.inherit, surface.customColor, currentIndex, mol]);
+  useEffect(() => { if (isApplying) return; (async () => { await mol.applyIllustrativeStyle(illustrative); })(); }, [illustrative, currentIndex, mol, isApplying]);
+  useEffect(() => { if (isApplying) return; (async () => { await mol.applySurface(surface.enabled, { opacity: surface.opacity, inherit: surface.inherit, customColor: surface.customColor }); })(); }, [surface.enabled, surface.opacity, surface.inherit, surface.customColor, currentIndex, mol, isApplying]);
 
   // Persist settings per file whenever controls change
   useEffect(() => {

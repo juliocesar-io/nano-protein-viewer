@@ -11,6 +11,7 @@ export interface MolstarViewerHandle {
   applyIllustrativeStyle: (enabled: boolean) => Promise<void>;
   applySurface: (enabled: boolean, options?: { opacity?: number; inherit?: boolean; customColor?: string }) => Promise<void>;
   resetView: () => Promise<void>;
+  resetColorTheme: () => Promise<void>;
 }
 
 export function createMolstarViewer(): MolstarViewerHandle {
@@ -33,13 +34,15 @@ export function createMolstarViewer(): MolstarViewerHandle {
 
     viewer = await Viewer.create(container, {
       layoutIsExpanded: false,
-      layoutShowControls: false,
+      layoutShowControls: true,
       layoutShowLeftPanel: false,
-      layoutShowSequence: false,
+      layoutShowSequence: true,
       layoutShowLog: false,
       viewportShowExpand: false,
       viewportShowSelectionMode: false,
-      viewportShowAnimation: false
+      viewportShowAnimation: false,
+      loadingOverlay: true,
+      alphafoldView: true,
     });
     hostEl = container;
   }
@@ -57,21 +60,43 @@ export function createMolstarViewer(): MolstarViewerHandle {
       await plugin.clear();
     }
 
-    const mimeType = format === 'mmcif' ? 'chemical/x-mmcif' : format === 'sdf' ? 'chemical/x-mdl-sdfile' : 'chemical/x-pdb';
-    const blob = new Blob([data], { type: mimeType });
-    const blobUrl = URL.createObjectURL(blob);
-
-    try {
-      const dataObj = await plugin.builders.data.download({ url: blobUrl, isBinary: false });
-      const molstarFormat = format === 'mmcif' ? 'mmcif' : format === 'sdf' ? 'sdf' : 'pdb';
-      const traj = await plugin.builders.structure.parseTrajectory(dataObj, molstarFormat as any);
-      await plugin.builders.structure.hierarchy.applyPreset(traj, 'default');
-      if (!maintainView) {
-        viewer.plugin.managers.camera.reset();
-      }
-    } finally {
-      URL.revokeObjectURL(blobUrl);
+    // Use plugin builders consistently (avoids format string mismatch like 'cif')
+    if (format === 'sdf') {
+      console.warn('[Mol*] SDF is not supported by the current viewer pipeline. Please use PDB/mmCIF.');
+      return;
     }
+
+    // Prefer loading from raw string to avoid blob URL/download issues
+    const raw = await plugin.builders.data.rawData({ data, label: 'structure' });
+    if (!raw || !raw.cell) {
+      console.warn('[Mol*] Failed to load data node (rawData).');
+      return;
+    }
+    const molFormat = format === 'mmcif' ? 'mmcif' : 'pdb';
+    let parsedOk = false;
+    try {
+      const traj: any = await plugin.builders.structure.parseTrajectory(raw, molFormat as any);
+      if (traj && traj.cell) {
+        await plugin.builders.structure.hierarchy.applyPreset(traj, 'default');
+        parsedOk = true;
+      }
+    } catch (e) {
+      // ignore here, will handle below
+      // console.warn('parseTrajectory failed:', e);
+    }
+
+    if (!parsedOk) {
+      // If structures already present (concurrent load finished), don't fail hard
+      const existing = plugin.managers.structure.hierarchy.current.structures;
+      if (existing && existing.length > 0) {
+        if (!maintainView) plugin.managers.camera.reset();
+        return;
+      }
+      console.warn('[Mol*] Failed to parse trajectory.');
+      return;
+    }
+
+    if (!maintainView) plugin.managers.camera.reset();
   }
 
   async function updateColorTheme(mode: 'custom'|'element'|'residue'|'secondary'|'chain'|'rainbow', params: any = {}) {
@@ -230,17 +255,41 @@ export function createMolstarViewer(): MolstarViewerHandle {
     })();
 
     for (const s of structures) {
-      if (s.components) {
-        for (const c of s.components) {
-          if (c.representations) {
-            for (const r of c.representations) {
-              const update = plugin.build().to(r.cell).update({
-                ...r.cell.transform.params,
-                colorTheme: { name: themeName, params: themeParams }
-              });
-              await update.commit();
-            }
+      if (!s.components) continue;
+      for (const c of s.components) {
+        if (!c.representations) continue;
+        for (const r of c.representations) {
+          try {
+            const update = plugin.build().to(r.cell).update({
+              ...r.cell.transform.params,
+              colorTheme: { name: themeName, params: themeParams }
+            });
+            await update.commit();
+          } catch {
+            // Representation may have been disposed due to a concurrent load; ignore.
           }
+        }
+      }
+    }
+  }
+
+  async function resetColorTheme() {
+    if (!viewer) return;
+    const plugin = viewer.plugin;
+    const structures = plugin.managers.structure.hierarchy.current.structures;
+    if (!structures || structures.length === 0) return;
+    for (const s of structures) {
+      if (!s.components) continue;
+      for (const c of s.components) {
+        if (!c.representations) continue;
+        for (const r of c.representations) {
+          try {
+            const update = plugin.build().to(r.cell).update({
+              ...r.cell.transform.params,
+              colorTheme: { name: 'chain-id', params: {} }
+            });
+            await update.commit();
+          } catch {}
         }
       }
     }
@@ -293,54 +342,62 @@ export function createMolstarViewer(): MolstarViewerHandle {
   async function applySurface(enabled: boolean, options: { opacity?: number; inherit?: boolean; customColor?: string } = {}) {
     if (!viewer) return;
     const plugin = viewer.plugin;
-    const structures = plugin.managers.structure.hierarchy.current.structures;
+    let structures = plugin.managers.structure.hierarchy.current.structures;
     if (!structures || structures.length === 0) return;
 
     // remove existing surfaces
-    const toDelete: any[] = [];
-    for (const s of structures) {
-      if (!s.components) continue;
-      for (const c of s.components) {
-        if (!c.representations) continue;
-        for (const r of c.representations) {
-          const t = r.cell.transform.params?.type?.name || r.cell.transform.params?.type;
-          if (t === 'gaussian-surface' || t === 'molecular-surface') toDelete.push(r.cell);
+    try {
+      const toDelete: any[] = [];
+      for (const s of structures) {
+        if (!s.components) continue;
+        for (const c of s.components) {
+          if (!c.representations) continue;
+          for (const r of c.representations) {
+            const t = r.cell.transform.params?.type?.name || r.cell.transform.params?.type;
+            if (t === 'gaussian-surface' || t === 'molecular-surface') toDelete.push(r.cell);
+          }
         }
       }
-    }
-    if (toDelete.length) {
-      const del = plugin.build();
-      toDelete.forEach(x => del.delete(x));
-      await del.commit();
-    }
+      if (toDelete.length) {
+        const del = plugin.build();
+        toDelete.forEach(x => del.delete(x));
+        await del.commit();
+      }
+    } catch {}
 
     if (!enabled) return;
 
     const alpha = Math.max(0, Math.min(1, (options.opacity ?? 40) / 100));
 
+    // Refresh structures snapshot to avoid stale refs
+    structures = plugin.managers.structure.hierarchy.current.structures;
     for (const s of structures) {
       if (!s.components) continue;
       for (const c of s.components) {
-        let colorName = 'uniform';
-        let colorParams: any = {};
-        if (options.inherit) {
-          const base = c.representations?.[0]?.cell.transform.params?.colorTheme;
-          colorName = base?.name || 'chain-id';
-          colorParams = base?.params || {};
-        } else if (options.customColor) {
-          colorName = 'uniform';
-          colorParams = { value: parseInt(String(options.customColor).replace('#',''), 16) };
-        } else {
-          colorName = 'uniform';
-          colorParams = { value: 0x4ECDC4 };
-        }
+        try {
+          let colorName = 'uniform';
+          let colorParams: any = {};
+          if (options.inherit) {
+            const base = c.representations?.[0]?.cell.transform.params?.colorTheme;
+            colorName = base?.name || 'chain-id';
+            colorParams = base?.params || {};
+          } else if (options.customColor) {
+            colorName = 'uniform';
+            colorParams = { value: parseInt(String(options.customColor).replace('#',''), 16) };
+          } else {
+            colorName = 'uniform';
+            colorParams = { value: 0x4ECDC4 };
+          }
 
-        await plugin.builders.structure.representation.addRepresentation(c.cell, {
-          type: 'gaussian-surface',
-          typeParams: { quality: 'auto', alpha },
-          color: colorName,
-          colorParams
-        });
+          await plugin.builders.structure.representation.addRepresentation(c.cell, {
+            type: 'gaussian-surface',
+            typeParams: { quality: 'auto', alpha },
+            color: colorName,
+            colorParams
+          });
+        } catch {
+          // Skip if component/parent disappeared due to concurrent reload
+        }
       }
     }
   }
@@ -350,6 +407,6 @@ export function createMolstarViewer(): MolstarViewerHandle {
     viewer.plugin.managers.camera.reset();
   }
 
-  return { viewer, mount, clear, loadStructureText, updateColorTheme, listChains, applyIllustrativeStyle, applySurface, resetView };
+  return { viewer, mount, clear, loadStructureText, updateColorTheme, listChains, applyIllustrativeStyle, applySurface, resetView, resetColorTheme };
 }
 

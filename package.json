@@ -111,6 +111,6 @@
     "typescript-eslint": "^8.46.2"
   },
   "dependencies": {
-    "molstar": "^4.8.0"
+    "molstar": "^5.2.0"
   }
 }
