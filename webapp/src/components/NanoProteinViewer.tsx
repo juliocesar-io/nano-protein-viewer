@@ -245,8 +245,8 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
         <GridView files={loaded} onSelect={(i) => { onSelectIndex(i); }} />
       )}
 
-      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, width: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {layoutMode === 'single' && (
+      {layoutMode === 'single' && (
+        <div style={{ position: 'absolute', top: '50%', left: 10, transform: 'translateY(-50%)', zIndex: 10, width: 360 }}>
           <ControlsPanel
             colorMode={colorMode}
             setColorMode={setColorMode}
@@ -266,17 +266,16 @@ export function NanoProteinViewer({ structureUrls }: NanoProteinViewerProps) {
             onToggleIllustrative={setIllustrative}
             surface={surface}
             setSurface={setSurface}
-            onResetView={async () => { await mol.resetView(); }}
-          />
-        )}
-
-        <div>
-          <FileListPanel
-            files={loaded.map((f) => ({ name: f.name, format: f.format }))}
-            currentIndex={currentIndex}
-            onSelect={onSelectIndex}
           />
         </div>
+      )}
+
+      <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: 280 }}>
+        <FileListPanel
+          files={loaded.map((f) => ({ name: f.name, format: f.format }))}
+          currentIndex={currentIndex}
+          onSelect={onSelectIndex}
+        />
       </div>
 
       <LayoutPanel mode={layoutMode} setMode={setLayoutMode} />
