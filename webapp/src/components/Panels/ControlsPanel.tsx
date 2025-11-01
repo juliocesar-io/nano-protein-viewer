@@ -57,34 +57,22 @@ export function ControlsPanel(props: ControlsPanelProps) {
       background: 'rgba(255,255,255,0.6)',
       border: '1px solid rgba(255,255,255,0.3)',
       borderRadius: 12,
-      padding: 12,
+      padding: 25,
       boxShadow: '0 8px 32px rgba(31,38,135,0.2)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       width: '100%',
       boxSizing: 'border-box'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: 16, color: 'hsl(220, 9%, 46%)' }}>Controls</h3>
-      </div>
 
       {props.onAddLocalStructures && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 10 }}>
           <input id={fileInputId} type="file" accept=".pdb,.PDB,.cif,.CIF,.mmcif,.MMCIF" multiple style={{ display: 'none' }} onChange={(e) => handleFiles(e.target.files)} />
           <button onClick={() => document.getElementById(fileInputId)?.click()} style={{
             padding: '10px 14px', width: '100%', borderRadius: 10, border: 'none',
             background: 'linear-gradient(180deg, #5B9CFF, #357AE8)', color: '#fff', fontWeight: 600,
             letterSpacing: 0.2, boxShadow: '0 6px 16px rgba(53, 122, 232, 0.35)', cursor: 'pointer'
-          }}>Load PDB/mmCIF files</button>
-        </div>
-      )}
-
-      {props.onResetView && (
-        <div style={{ marginTop: 8 }}>
-          <button onClick={props.onResetView} style={{
-            padding: '8px 12px', width: '100%', borderRadius: 6, border: '1px solid hsl(214.3 31.8% 91.4%)',
-            background: 'hsl(220, 9%, 46%)', color: 'hsl(210,40%,98%)', cursor: 'pointer'
-          }}>Reset View</button>
+          }}>Load PDB/mmCIF</button>
         </div>
       )}
 
@@ -130,25 +118,42 @@ export function ControlsPanel(props: ControlsPanelProps) {
                   }}
                 />
               ))}
-              {/* native color input as the final circle */}
-              <input
-                id={colorInputId}
-                type="color"
-                title="Pick custom color"
-                value={/^#([0-9A-F]{3}){1,2}$/i.test(props.customColor) ? props.customColor : '#ffffff'}
-                onChange={(e) => props.setCustomColor(e.target.value)}
-                style={{
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  width: 22,
-                  height: 22,
-                  padding: 0,
-                  borderRadius: '50%',
-                  border: '1px dashed rgba(0,0,0,0.25)',
-                  background: 'transparent',
-                  cursor: 'pointer'
-                }}
-              />
+              {/* native color input as the final circle with + overlay */}
+              <div style={{ position: 'relative', width: 22, height: 22 }} title="Pick custom color">
+                <input
+                  id={colorInputId}
+                  type="color"
+                  value={/^#([0-9A-F]{3}){1,2}$/i.test(props.customColor) ? props.customColor : '#ffffff'}
+                  onChange={(e) => props.setCustomColor(e.target.value)}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    width: 22,
+                    height: 22,
+                    padding: 0,
+                    borderRadius: '50%',
+                    border: '1px dashed rgba(0,0,0,0.25)',
+                    background: 'transparent',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontWeight: 800,
+                    fontSize: 12,
+                    color: '#2b2b2b',
+                    textShadow: '0 1px 2px rgba(255,255,255,0.6)',
+                    pointerEvents: 'none',
+                    lineHeight: 1
+                  }}
+                >+
+                </span>
+              </div>
             </div>
           </div>
         )}
