@@ -34,15 +34,13 @@ export function createMolstarViewer(): MolstarViewerHandle {
 
     viewer = await Viewer.create(container, {
       layoutIsExpanded: false,
-      layoutShowControls: true,
+      layoutShowControls: false,
       layoutShowLeftPanel: false,
       layoutShowSequence: true,
       layoutShowLog: false,
       viewportShowExpand: false,
-      viewportShowSelectionMode: false,
+      viewportShowSelectionMode: true,
       viewportShowAnimation: false,
-      loadingOverlay: true,
-      alphafoldView: true,
     });
     hostEl = container;
   }
